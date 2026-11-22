@@ -1,4 +1,4 @@
-name: Build YellowPlanner Qt for Windows
+name: Build YellowPlanner Qt (single EXE)
 
 on:
   workflow_dispatch:
@@ -36,42 +36,45 @@ jobs:
       - name: Check Python syntax
         run: python -m py_compile YellowPlanner_Qt_1.0.py
 
-      - name: Build portable application folder
+      # PyInstaller анализирует реальные импорты приложения и добавляет
+      # нужные Qt DLL/плагины. Не используем --collect-all PySide6.
+      - name: Build single-file EXE
         run: >-
           python -m PyInstaller
           --noconfirm
           --clean
           --windowed
-          --onedir
-          --noupx
+          --onefile
           --name YellowPlannerQt
-          --collect-all PySide6
           --hidden-import PySide6.QtSvg
           --version-file version_info.txt
           YellowPlanner_Qt_1.0.py
 
-      - name: Add readme and create ZIP
+      - name: Add README and SHA256
         shell: pwsh
         run: |
           @'
           YellowPlanner Qt 1.0
 
-          Распакуйте весь архив в отдельную папку и запускайте YellowPlannerQt.exe.
-          Не перемещайте EXE отдельно от папки _internal и остальных файлов рядом с ним.
+          Запустите YellowPlannerQt.exe. Программа поставляется одним EXE.
+          При первом запуске PyInstaller может распаковать временные библиотеки.
 
           Данные хранятся отдельно от программы:
           %APPDATA%\YellowPlanner\tasks.json
 
           Перед первым запуском сделайте резервную копию tasks.json и закройте старую версию YellowPlanner.
           Python на компьютере пользователя не требуется.
-          '@ | Set-Content -Encoding UTF8 dist/YellowPlannerQt/README.txt
-          $hash = (Get-FileHash dist/YellowPlannerQt/YellowPlannerQt.exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  YellowPlannerQt.exe" | Set-Content -Encoding ASCII dist/YellowPlannerQt/YellowPlannerQt.exe.sha256
+          '@ | Set-Content -Encoding UTF8 dist/README.txt
+          $hash = (Get-FileHash dist/YellowPlannerQt.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  YellowPlannerQt.exe" | Set-Content -Encoding ASCII dist/YellowPlannerQt.exe.sha256
 
-      - name: Upload Windows build
+      - name: Upload single-file build
         uses: actions/upload-artifact@v4
         with:
-          name: YellowPlannerQt-Windows
-          path: dist/YellowPlannerQt/
+          name: YellowPlannerQt-OneFile
+          path: |
+            dist/YellowPlannerQt.exe
+            dist/README.txt
+            dist/YellowPlannerQt.exe.sha256
           if-no-files-found: error
           retention-days: 30
